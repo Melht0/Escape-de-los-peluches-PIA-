@@ -135,7 +135,7 @@ const keys3D = { gold: makeKey('#efb33f'), blue: makeKey('#58a8e9'), green: make
 for (const k of Object.values(keys3D)) scene.add(k);
 
 let active = 'bed', started = false, paused = false, caught = false, finale = false;
-let elapsed = 0, toastTimer = null, doorAttempts = 0, exitDoor = null;
+let elapsed = 0, toastTimer = null, doorAttempts = 0, exitDoor = null, doorUsePoint = null, finaleStartedAt = 0, finaleCowStart = null, finaleBunnyStart = null;
 const collected = { gold: false, blue: false, green: false };
 const keyPositions = {};
 const keyToRoom = { gold: 'bed', blue: 'kitchen', green: 'living' };
@@ -204,8 +204,10 @@ function interact() {
   if (!started || paused || finale || caught) return;
   const key = Object.keys(keyToRoom).find(k => keyToRoom[k] === active && !collected[k]);
   if (key && distance(player.position, keyPositions[key]) < 2.8) { collectKey(key); return; }
-  if (active === 'living' && Object.values(collected).every(Boolean) && exitDoor && distance(player.position, getExitDoorCenter()) < 3.4) {
-    testDoorKey(); return;
+  if (active === 'living' && Object.values(collected).every(Boolean)) {
+    if (doorUsePoint && distance(player.position, doorUsePoint) < 4.6) { testDoorKey(); return; }
+    showToast('Acércate al frente de la puerta de salida y presiona E para probar una llave.');
+    return;
   }
   showToast('Acércate al objeto con el que quieras interactuar y presiona E.');
 }
@@ -222,43 +224,42 @@ function testDoorKey() {
   startFinale();
 }
 function startFinale() {
-  finale = true; $('#objective').textContent = '¡La llave azul funciona! La vaca y el conejo escapan.';
-  showToast('¡Clic! La llave azul abre la puerta.');
-  if (exitDoor) { exitDoor.userData.opening = true; }
-  setTimeout(() => {
-    if (exitDoor) exitDoor.rotation.y += Math.PI / 2;
-    showToast('¡La vaca y el conejo lograron escapar!');
-  }, 650);
-  setTimeout(() => { $('#ending').classList.remove('hidden'); started = false; }, 2400);
+  finale = true;
+  finaleStartedAt = clock.elapsedTime;
+  finaleCowStart = player.position.clone();
+  finaleBunnyStart = buddy.position.clone();
+  $('#objective').textContent = '¡La llave azul funciona! La vaca y el conejo están saliendo de la casa.';
+  showToast('¡Clic! La llave azul abrió la puerta. ¡Escapen!');
+  if (exitDoor) { exitDoor.userData.opening = true; exitDoor.userData.startRotation = exitDoor.rotation.y; }
 }
 function resetGame() {
   Object.keys(collected).forEach(k => { collected[k] = false; keys3D[k].visible = true; });
-  doorAttempts = 0; if (exitDoor) exitDoor.rotation.y = 0;
+  doorAttempts = 0; if (exitDoor) { exitDoor.rotation.y = exitDoor.userData.startRotation || 0; exitDoor.userData.opening = false; }
   updateKeyUI(); elapsed = 0; finale = false; caught = false; paused = false; started = true;
   setRoom('bed'); $('#threat').style.display = 'none';
-  $('#start').classList.add('hidden'); $('#pause').classList.add('hidden'); $('#caught').classList.add('hidden'); $('#ending').classList.add('hidden');
+  $('#start').classList.add('hidden'); $('#pause').classList.add('hidden'); $('#caught').classList.add('hidden'); $('#ending').classList.add('hidden'); delete $('#ending').dataset.shown;
   showToast('Encuentra las tres llaves y evita al oso.');
 }
 function pauseGame(value) { paused = value; $('#pause').classList.toggle('hidden', !value); }
 
 function findOriginalExitDoor() {
-  // La puerta forma parte del modelo Sala.glb original (Sala2.glb entregado).
-  // No se crea, sustituye ni recoloca ningún elemento del escenario.
+  // Se utiliza la puerta original que ya forma parte de Sala.glb.
   const group = roomGroups.living;
   let found = null;
-  group.traverse(obj => {
-    if (!found && obj.name && /Puerta principal/i.test(obj.name)) found = obj;
-  });
+  group.traverse(obj => { if (!found && obj.name && /puerta principal/i.test(obj.name)) found = obj; });
   exitDoor = found;
-  if (!exitDoor) console.warn('No se encontró el objeto "Puerta principal" dentro de Sala.glb.');
-}
-function getExitDoorCenter() {
-  if (!exitDoor) return new THREE.Vector3(0, 0, 0);
+  if (!exitDoor) { console.warn('No se encontró Puerta principal en Sala.glb.'); doorUsePoint = null; return; }
   exitDoor.updateWorldMatrix(true, false);
   const bounds = new THREE.Box3().setFromObject(exitDoor);
+  const size = bounds.getSize(new THREE.Vector3());
   const center = bounds.getCenter(new THREE.Vector3());
-  return new THREE.Vector3(center.x, 0, center.z);
+  // El punto queda delante de la hoja, hacia el interior, para que sea alcanzable.
+  const roomCenter = new THREE.Vector3(group.position.x, 0, group.position.z);
+  const inward = new THREE.Vector3(roomCenter.x - center.x, 0, roomCenter.z - center.z).normalize();
+  const halfDepth = Math.min(Math.max(size.x, size.z) * .5, 1.1);
+  doorUsePoint = new THREE.Vector3(center.x, 0, center.z).addScaledVector(inward, halfDepth + 1.05);
 }
+function getExitDoorCenter() { return doorUsePoint ? doorUsePoint.clone() : new THREE.Vector3(0, 0, 0); }
 
 async function loadAll() {
   const roomEntries = Object.entries(roomInfo);
@@ -308,6 +309,29 @@ $('#again').addEventListener('click', resetGame);
 function animate() {
   requestAnimationFrame(animate);
   const dt = Math.min(clock.getDelta(), .04);
+  if (finale && actors.cow) {
+    const t = Math.min((clock.elapsedTime - finaleStartedAt) / 2.25, 1);
+    if (doorUsePoint && finaleCowStart && finaleBunnyStart) {
+      const outward = new THREE.Vector3(doorUsePoint.x - roomGroups.living.position.x, 0, doorUsePoint.z - roomGroups.living.position.z).normalize();
+      const cowEnd = doorUsePoint.clone().addScaledVector(outward, 2.0);
+      const bunnyEnd = doorUsePoint.clone().addScaledVector(outward, 2.7);
+      player.position.lerpVectors(finaleCowStart, cowEnd, t);
+      buddy.position.lerpVectors(finaleBunnyStart, bunnyEnd, t);
+      actors.cow.rotation.y = Math.atan2(outward.x, outward.z);
+      actors.bunny.rotation.y = Math.atan2(outward.x, outward.z);
+    }
+    if (exitDoor && exitDoor.userData.opening) {
+      const startRot = exitDoor.userData.startRotation || 0;
+      exitDoor.rotation.y = startRot + t * Math.PI * .48;
+    }
+    if (t >= 1 && !$('#ending').dataset.shown) {
+      $('#ending').dataset.shown = '1';
+      $('#ending').classList.remove('hidden');
+      $('#ending').querySelector('p').textContent = '¡La vaca y el conejo salieron de la casa abandonada! La llave azul abrió la puerta y ambos lograron escapar.';
+      started = false;
+      showToast('¡La vaca y el conejo lograron salir de la casa abandonada!');
+    }
+  }
   if (started && !paused && !finale && actors.cow) {
     elapsed += dt;
     let dx = 0, dz = 0;
