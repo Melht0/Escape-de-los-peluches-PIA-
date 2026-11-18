@@ -1,108 +1,346 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
-const host=document.querySelector('#stage');
-const scene=new THREE.Scene(); scene.background=new THREE.Color('#21191a');
-const camera=new THREE.PerspectiveCamera(37,innerWidth/innerHeight,.1,180);
-camera.position.set(0,31,39); camera.lookAt(0,1,0);
-const renderer=new THREE.WebGLRenderer({antialias:true}); renderer.setPixelRatio(Math.min(devicePixelRatio,2)); renderer.setSize(innerWidth,innerHeight); renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap; renderer.outputColorSpace=THREE.SRGBColorSpace; renderer.toneMapping=THREE.ACESFilmicToneMapping; renderer.toneMappingExposure=1.25; host.appendChild(renderer.domElement);
-scene.add(new THREE.HemisphereLight(0xffe4c2,0x342323,2.0));
-const keyLight=new THREE.DirectionalLight(0xffd19a,3.1); keyLight.position.set(-12,28,18); keyLight.castShadow=true; keyLight.shadow.mapSize.set(2048,2048); scene.add(keyLight);
-const fill=new THREE.PointLight(0xff9b46,100,60); fill.position.set(0,13,0); scene.add(fill);
-const loader=new GLTFLoader(); const clock=new THREE.Clock();
-const mat=(color,rough=.82,metal=0)=>new THREE.MeshStandardMaterial({color,roughness:rough,metalness:metal});
-const mats={wood:mat('#53311f'),wood2:mat('#805033'),wall:mat('#d5a75e'),wall2:mat('#2a160d'),tile:mat('#a88b73'),dark:mat('#171311'),gold:mat('#e8a83d',.3,.6),white:mat('#e9dfd3'),brown:mat('#50372b'),blue:mat('#253044'),green:mat('#273a30'),fabric:mat('#b8a18d')};
-const world=new THREE.Group(); scene.add(world);
-function box(parent,name,x,y,z,w,h,d,material,opts={}){const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),material);m.name=name;m.position.set(x,y,z);m.castShadow=opts.cast!==false;m.receiveShadow=true;parent.add(m);return m;}
-function cylinder(parent,name,x,y,z,r1,r2,h,material){const m=new THREE.Mesh(new THREE.CylinderGeometry(r1,r2,h,24),material);m.name=name;m.position.set(x,y,z);m.castShadow=true;parent.add(m);return m;}
-function texturingFloor(parent,x,z,w,d,material,grid=0){box(parent,'floor',x,.02,z,w,.16,d,material);if(grid){for(let xx=x-w/2;xx<=x+w/2+.01;xx+=grid)box(parent,'floor-seam',xx,.105,z,.025,.012,d,mat('#765c49'));for(let zz=z-d/2;zz<=z+d/2+.01;zz+=grid)box(parent,'floor-seam',x,.105,zz,w,.012,.025,mat('#765c49'));}}
-function roomShell(parent,id,cx,cz,w,d,wallMat,floorMat,frontHeight=2.4){const g=new THREE.Group();g.position.set(cx,0,cz);g.userData={id,cx,cz,w,d};parent.add(g);texturingFloor(g,0,0,w,d,floorMat,id==='kitchen'?1.5:0);
-// side/back walls and low front wall keep all furniture visible in the isometric overview
-box(g,'back-wall',0,2.9,-d/2,w,5.8,.32,wallMat);box(g,'left-wall',-w/2,2.3,0,.32,4.6,d,wallMat);box(g,'right-wall',w/2,2.3,0,.32,4.6,d,wallMat);box(g,'front-wall-left',-w*.34,frontHeight/2,d/2,w*.32,frontHeight,.32,wallMat);box(g,'front-wall-right',w*.34,frontHeight/2,d/2,w*.32,frontHeight,.32,wallMat);
-// bronze structural frame
-const trim=mat('#a95e25',.38,.55);box(g,'top-back-trim',0,5.85,-d/2,w+.3,.22,.5,trim);box(g,'left-trim',-w/2,2.35,0,.45,4.8,d+.4,trim);box(g,'right-trim',w/2,2.35,0,.45,4.8,d+.4,trim);box(g,'front-trim',0,frontHeight+.15,d/2,w+.45,.35,.55,trim);
-// top warm light accents
-for(let i=-1;i<=1;i++)box(g,'warm-light',i*w*.27,5.98,-d/2,.9,.12,.18,mats.gold);
-return g;}
-const bedRoom=roomShell(world,'bed',-8,-7,14,10,mat('#c18a3e'),mat('#4a2e21'),2.1);
-const kitchen=roomShell(world,'kitchen',8,-7,14,10,mat('#d7c5a8'),mat('#806b59'),2.1);
-const living=roomShell(world,'living',0,7,19,11,mat('#302017'),mat('#57504d'),2.2);
-// bedroom: same main pieces and arrangement as supplied Blender scene
-box(bedRoom,'bed-base',-3,.72,1.1,5.6,1.05,3.3,mats.wood2);box(bedRoom,'mattress',-3,1.35,1.1,5.5,.38,3.25,mats.white);box(bedRoom,'pillow',-4.8,1.62,1.1,1.3,.25,1.05,mat('#f5e8dc'));box(bedRoom,'headboard',-3,1.8,-.65,5.8,1.9,.25,mats.brown);box(bedRoom,'bedside',.8,.75,-1.4,1.2,1.4,1.2,mats.brown);cylinder(bedRoom,'lamp-base',.8,1.55,-1.4,.25,.25,.12,mats.gold);cylinder(bedRoom,'lamp-shade',.8,2.05,-1.4,.42,.2,.8,mat('#f4d5a1'));box(bedRoom,'dresser',5,.9,-2.8,1.6,1.8,1.2,mats.brown);box(bedRoom,'shelf',-4,2.3,-4.65,2.1,2.7,.3,mat('#382b25'));for(let y=1.5;y<3.5;y+=.55)box(bedRoom,'shelf-board',-4,y,-4.42,1.9,.09,.4,mat('#655044'));
-// kitchen: tiled walls, counter, table, two chairs, fridge
-box(kitchen,'counter-back',0,1.15,-3.85,8.6,1.8,.8,mats.wood2);box(kitchen,'counter-top',0,2.1,-3.8,8.9,.18,1.05,mat('#b58a5e'));for(let x=-3;x<=3;x+=1.5){box(kitchen,'cabinet-door',x,1.05,-3.35,1.35,1.3,.12,mat('#c9b69e'));cylinder(kitchen,'cabinet-knob',x+.4,1.1,-3.25,.06,.06,.08,mats.gold)}box(kitchen,'fridge',5,1.7,-2.1,1.8,3.2,1.7,mat('#aeb9ba',.35,.18));box(kitchen,'fridge-handle',4.3,1.8,-1.2,.08,1.2,.08,mat('#667174',.3,.5));box(kitchen,'table-top',0,1.45,.7,4.7,.25,2.1,mats.wood2);for(const x of [-1.9,1.9])for(const z of [-.05,1.45])box(kitchen,'table-leg',x,.7,z,.18,1.35,.18,mats.brown);for(const x of [-3.2,3.2]){box(kitchen,'chair-seat',x,1,.8,1.5,.25,1.4,mats.fabric);box(kitchen,'chair-back',x,1.8,1.45,1.5,1.5,.2,mat('#9da5a5'));for(const dx of [-.55,.55])for(const dz of [.3,1.3])box(kitchen,'chair-leg',x+dx,.48,dz,.12,1,.12,mat('#a4afb0'));}cylinder(kitchen,'plate',-.7,1.61,.65,.42,.42,.05,mats.white);cylinder(kitchen,'plate',.8,1.61,.65,.42,.42,.05,mats.white);
-// living room: wallpaper, cabinet, television, door, green chair and side table
-box(living,'wardrobe',-6,1.55,-4.2,3,3.1,1.6,mats.brown);box(living,'wardrobe-blue-door',-6,1.7,-3.35,1.25,2.1,.1,mats.blue);box(living,'wardrobe-blue-door',-4.7,1.7,-3.35,1.25,2.1,.1,mats.blue);box(living,'tv-body',-4.3,1.1,1.2,3.1,2.2,1.1,mat('#171c1c'));box(living,'tv-screen',-4.3,1.1,.62,2.7,1.75,.08,mat('#0d2226',.18,.25));for(const x of [-5,-3.6]){const ant=new THREE.Mesh(new THREE.CylinderGeometry(.025,.025,1.6,8),mat('#a8b0a7'));ant.position.set(x,2.65,.95);ant.rotation.z=.35;living.add(ant)}
-// Exit door: clearly visible on the BACK wall of the living room, facing the camera.
-// Split the back wall around a real doorway so the door cannot be hidden behind it.
-const oldBack=living.children.find(o=>o.name==='back-wall');
-if(oldBack) living.remove(oldBack);
-box(living,'back-wall-left',-8.35,2.9,-5.5,2.3,5.8,.32,mat('#302017'));
-box(living,'back-wall-right',2.15,2.9,-5.5,14.7,5.8,.32,mat('#302017'));
-const exitDoorPivot=new THREE.Group();
-exitDoorPivot.position.set(-7.2,0,-5.27); // hinge at the left side of the opening
-living.add(exitDoorPivot);
-box(exitDoorPivot,'exit-door',1.5,1.85,0,3,3.7,.24,mat('#6f3d25'));
-box(exitDoorPivot,'exit-door-inset',1.5,1.9,.15,2.25,2.85,.09,mat('#8c5635'));
-box(exitDoorPivot,'exit-door-upper-panel',1.5,2.65,.22,1.75,1.05,.07,mat('#70452f'));
-box(exitDoorPivot,'exit-door-lower-panel',1.5,1.15,.22,1.75,1.05,.07,mat('#70452f'));
-box(exitDoorPivot,'exit-door-handle',2.65,1.85,.28,.1,.32,.1,mats.gold);
-box(living,'exit-door-frame-left',-7.28,2,-5.27,.24,4,.42,mat('#d18a3e'));
-box(living,'exit-door-frame-right',-4.12,2,-5.27,.24,4,.42,mat('#d18a3e'));
-box(living,'exit-door-frame-top',-5.7,4,-5.27,3.4,.24,.42,mat('#d18a3e'));
-box(living,'exit-door-threshold',-5.7,.13,-4.95,3.1,.18,.7,mats.gold);
-// distinctive green angular chair silhouette
-box(living,'chair-seat',3,1.2,.7,2.5,.45,2,mats.green);box(living,'chair-back',3,2.3,-.1,2.4,2.2,.45,mats.green).rotation.x=-.16;box(living,'chair-arm',1.85,1.7,.8,.4,1.4,2,mats.green);box(living,'chair-arm',4.15,1.7,.8,.4,1.4,2,mats.green);cylinder(living,'side-table-pedestal',6.2,.8,1.6,.12,.12,1.5,mats.brown);cylinder(living,'side-table-top',6.2,1.6,1.6,.9,.9,.16,mat('#c7b6a4'));cylinder(living,'cup',6.2,1.82,1.6,.22,.28,.34,mats.white);
-// door openings are indicated with bright thresholds
-for(const room of [bedRoom,kitchen,living]){box(room,'threshold',0,.14,room.userData.d/2-.05,2.1,.16,.55,mats.gold)}
+const $ = (s) => document.querySelector(s);
+const stage = $('#stage');
+const scene = new THREE.Scene();
+scene.background = new THREE.Color('#17100e');
+scene.fog = new THREE.Fog('#17100e', 42, 90);
+const camera = new THREE.PerspectiveCamera(37, innerWidth / innerHeight, 0.1, 180);
+camera.position.set(0, 25, 34);
+camera.fov = 34;
+camera.lookAt(0, 0.8, 0);
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 1.8));
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.2;
+stage.appendChild(renderer.domElement);
 
-// subtle background floor and brass perimeter
-box(scene,'underlay',0,-.65,0,60,.5,42,mat('#171211'));
-const rail=mat('#56311e',.42,.6);for(const [x,z,w,d] of [[-8,-7,14,10],[8,-7,14,10],[0,7,19,11]]){box(world,'outer-foundation',x,-.18,z,w+.8,.35,d+.8,rail)}
+scene.add(new THREE.HemisphereLight(0xffe6c8, 0x35231c, 2.15));
+const sun = new THREE.DirectionalLight(0xffd09a, 3.2);
+sun.position.set(-15, 28, 20); sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.camera.left = -30; sun.shadow.camera.right = 30;
+sun.shadow.camera.top = 30; sun.shadow.camera.bottom = -30;
+scene.add(sun);
+const warm = new THREE.PointLight(0xffa94d, 150, 55); warm.position.set(0, 12, 0); scene.add(warm);
 
-const actors={cow:null,bunny:null,bear:null};
-async function loadActor(file,height){const gltf=await loader.loadAsync(`models/${file}`);const obj=gltf.scene;obj.traverse(n=>{if(n.isMesh){n.castShadow=true;n.receiveShadow=true;if(n.material){n.material.side=THREE.DoubleSide;}}});const b=new THREE.Box3().setFromObject(obj);const size=b.getSize(new THREE.Vector3());const scale=height/Math.max(size.y,.01);obj.scale.setScalar(scale);obj.updateMatrixWorld(true);const bb=new THREE.Box3().setFromObject(obj);obj.position.y-=bb.min.y;return obj;}
-const spawn={bed:new THREE.Vector3(-10,0,-7),kitchen:new THREE.Vector3(5,0,-7),living:new THREE.Vector3(-3,0,7)};
-let active='bed',playing=false,paused=false,cutscene=false,keys={gold:false,blue:false,green:false},doorAttempt=0,lastSafe='bed',elapsed=0,toastTimer=0,nearText='';
-const player=new THREE.Group();scene.add(player);const buddy=new THREE.Group();scene.add(buddy);const bear=new THREE.Group();scene.add(bear);
-const roomMap={bed:bedRoom,kitchen,living};const roomMeta={bed:{name:'PISO 3 · HABITACIÓN',objective:'Busca la llave dorada debajo de la cama'},kitchen:{name:'PISO 2 · COCINA',objective:'El conejo moverá la silla para alcanzar la llave azul'},living:{name:'PISO 1 · SALA',objective:'Busca la llave verde dentro de la taza'}};
-function roomBounds(id){const r=roomMap[id].userData;return {minX:r.cx-r.w/2+1,maxX:r.cx+r.w/2-1,minZ:r.cz-r.d/2+1,maxZ:r.cz+r.d/2-(id==='living'?-1:1)}}
-function moveActor(obj,pos){obj.position.copy(pos)}
-function setRoom(id){active=id;const p=spawn[id].clone();player.position.set(p.x,0,p.z);buddy.position.set(p.x-1.6,0,p.z+.8);if(actors.bear){const r=roomBounds(id);bear.position.set(r.maxX-1,0,r.minZ+1);}document.querySelector('#room-name').textContent=roomMeta[id].name;document.querySelector('#objective').textContent=roomMeta[id].objective;document.querySelectorAll('.floor-btn').forEach(b=>b.classList.toggle('active',b.dataset.room===id));lastSafe=id;}
-function showToast(t){const el=document.querySelector('#toast');el.textContent=t;el.style.opacity=1;clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.style.opacity=0,2200)}
-function updateKeys(){for(const k of ['gold','blue','green']){const el=document.querySelector(`[data-key="${k}"] small`);el.textContent=keys[k]?'CONSEGUIDA':'PENDIENTE';el.style.color=keys[k]?'#f6c56c':''}}
-function pause(show){paused=show;document.querySelector('#pause').classList.toggle('hidden',!show)}
-function showScreen(id){document.querySelectorAll('.overlay').forEach(e=>e.classList.add('hidden'));if(id)document.querySelector('#'+id).classList.remove('hidden')}
-function reset(){keys={gold:false,blue:false,green:false};doorAttempt=0;updateKeys();elapsed=0;cutscene=false;setRoom('bed');bear.position.set(-3.4,0,-11);playing=true;paused=false;showScreen(null);showToast('Encuentra las tres llaves y evita al oso.');}
-function changeRoom(id){if(id==='kitchen'&&!keys.gold){showToast('Primero necesitas la llave dorada para abrir el acceso a la cocina.');return}if(id==='living'&&!keys.blue){showToast('La puerta de la sala sigue cerrada. Busca la llave azul.');return}setRoom(id);showToast(`Entraste a ${id==='bed'?'la habitación':id==='kitchen'?'la cocina':'la sala'}.`)}
-function getDistance(a,b){return Math.hypot(a.x-b.x,a.z-b.z)}
-function interact(){if(!playing||paused||cutscene)return;const p=player.position;
- if(active==='bed'&&!keys.gold&&getDistance(p,new THREE.Vector3(-3,0,1.1))<4.1){keys.gold=true;updateKeys();showToast('¡Encontraste la llave dorada debajo de la cama!');return}
- if(active==='kitchen'&&!keys.blue&&getDistance(p,new THREE.Vector3(5,0,-2.1))<4.2){keys.blue=true;updateKeys();showToast('El conejo movió la silla. ¡Conseguiste la llave azul del refrigerador!');buddy.position.set(4,0,-.2);return}
- if(active==='living'&&!keys.green&&getDistance(p,new THREE.Vector3(6.2,0,1.6))<3.4){keys.green=true;updateKeys();showToast('¡La llave verde estaba dentro de la taza!');return}
- if(active==='living'&&getDistance(p,new THREE.Vector3(-5.7,0,2.7))<2.9){
-   if(!(keys.gold&&keys.blue&&keys.green)){showToast('Necesitas reunir las tres llaves antes de probar la cerradura.');return}
-   const attempts=[['gold','La llave dorada no entra en la cerradura.'],['green','La llave verde tampoco funciona.'],['blue','¡La llave azul gira! La puerta se está abriendo.']];
-   const [which,message]=attempts[Math.min(doorAttempt,2)];showToast(message);doorAttempt++;
-   if(which==='blue'){startEnding();}return;
- }
- if(active==='bed'&&keys.gold){changeRoom('kitchen');return}if(active==='kitchen'&&keys.blue){changeRoom('living');return}showToast('Acércate al objeto y presiona E para interactuar.');}
-function startEnding(){cutscene=true;showToast('¡La llave azul gira! La puerta se abre.');setTimeout(()=>{exitDoorPivot.rotation.y=-Math.PI/1.8;},450);setTimeout(()=>{showScreen('ending');playing=false;},3000)}
-function setActionHint(){let t=roomMeta[active].objective;if(active==='bed'&&keys.gold)t='Llave dorada conseguida. Ve a la cocina.';if(active==='kitchen'&&keys.blue)t='Llave azul conseguida. Continúa hacia la sala.';if(active==='living'&&keys.gold&&keys.blue&&keys.green)t='Acércate a la puerta del fondo de la sala y prueba las llaves.';document.querySelector('#objective').textContent=t}
-let cowReady=false;
-Promise.all([loadActor('Vaca_Protagonista.glb',2.05),loadActor('Conejo_Complice.glb',1.65),loadActor('Oso.glb',2.35)]).then(([c,b,o])=>{actors.cow=c;actors.bunny=b;actors.bear=o;player.add(c);buddy.add(b);bear.add(o);setRoom('bed');cowReady=true;document.querySelector('#play').disabled=false;document.querySelector('#play').textContent='COMENZAR';}).catch(err=>{console.error(err);document.querySelector('#loading')?.remove();showToast('No se pudieron cargar los modelos GLB. Revisa la carpeta models.');});
-// movement, soft obstacle blocking around furniture and room walls
-const obstacles={bed:[[-3,1.1,2.7,1.7],[5,-2.8,1.2,1.2],[-4,-4.5,2.2,.5]],kitchen:[[0,-3.7,8.7,1.1],[5,-2.1,1.8,1.8],[0,.7,4.8,2.2],[-3.2,.8,1.5,1.5],[3.2,.8,1.5,1.5]],living:[[-6,-4.2,3,1.7],[0,-4.6,2.8,.6],[-4.3,1.2,3.1,1.1],[3,.7,2.5,2.2],[6.2,1.6,1.8,1.8]]};
-function blocked(id,x,z){const r=roomBounds(id);if(x<r.minX||x>r.maxX||z<r.minZ||z>r.maxZ)return true;for(const [ox,oz,w,d] of obstacles[id])if(Math.abs(x-ox)<w/2+.45&&Math.abs(z-oz)<d/2+.45)return true;return false;}
-const down={};addEventListener('keydown',e=>{const k=e.key.toLowerCase();down[k]=true;if(['arrowup','arrowdown','arrowleft','arrowright',' '].includes(k))e.preventDefault();if(k==='escape'&&playing)pause(!paused);if(k==='e')interact();if(k==='1')changeRoom('bed');if(k==='2')changeRoom('kitchen');if(k==='3')changeRoom('living');});addEventListener('keyup',e=>down[e.key.toLowerCase()]=false);
-document.querySelectorAll('.floor-btn').forEach(b=>b.addEventListener('click',()=>changeRoom(b.dataset.room)));
-document.querySelector('#play').addEventListener('click',()=>{if(!cowReady){showToast('Espera a que terminen de cargar los personajes.');return}reset()});document.querySelector('#show-instructions').onclick=()=>showScreen('instructions');document.querySelector('#instructions-back').onclick=()=>showScreen('start');document.querySelector('#resume').onclick=()=>pause(false);document.querySelector('#restart').onclick=()=>{setRoom(active);pause(false)};document.querySelector('#retry').onclick=()=>{setRoom(lastSafe);showScreen(null);playing=true};document.querySelector('#again').onclick=()=>{reset()};
+const loader = new GLTFLoader();
+const clock = new THREE.Clock();
+const root = new THREE.Group(); scene.add(root);
+const roomGroups = {};
+const roomInfo = {
+  bed: { file: 'Habitacion.glb', title: 'PISO 3 · HABITACIÓN', objective: 'Explora la habitación y encuentra la primera llave', center: [-8, -7], spawn: [-1.6, 0, 2.3], key: [-2.6, 0.22, 1.7], target: 'cama' },
+  kitchen: { file: 'Cocina.glb', title: 'PISO 2 · COCINA', objective: 'Explora la cocina. El conejo puede ayudarte a avanzar', center: [8, -7], spawn: [-1.65, 0, 1.35], key: [-0.65, 2.05, -4.15], target: 'repisa' },
+  living: { file: 'Sala.glb', title: 'PISO 1 · SALA', objective: 'Explora la sala y encuentra la última llave', center: [0, 7], spawn: [-3.1, 0, 2.5], key: [3.5, 0.8, 1.3], target: 'taza' }
+};
+const roomSizes = {};
+const colliders = { bed: [], kitchen: [], living: [] };
+const material = (color, roughness = .7, metalness = .25) => new THREE.MeshStandardMaterial({ color, roughness, metalness });
+const bronze = material('#9b5729', .42, .62);
+const darkBase = material('#261711', .75, .25);
 
-function animate(){requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),.04);if(playing&&!paused&&!cutscene&&cowReady){elapsed+=dt;const speed=5.1;let dx=0,dz=0;if(down.arrowleft||down.a)dx-=1;if(down.arrowright||down.d)dx+=1;if(down.arrowup||down.w)dz-=1;if(down.arrowdown||down.s)dz+=1;const len=Math.hypot(dx,dz)||1;dx=dx/len*speed*dt;dz=dz/len*speed*dt;const nx=player.position.x+dx,nz=player.position.z+dz;if(!blocked(active,nx,player.position.z))player.position.x=nx;if(!blocked(active,player.position.x,nz))player.position.z=nz;if(dx||dz){const yaw=Math.atan2(dx,dz);actors.cow.rotation.y=yaw;}
- const follow=new THREE.Vector3(player.position.x-1.1,0,player.position.z+1.15);buddy.position.lerp(follow,Math.min(1,dt*3));if(Math.abs(dx)+Math.abs(dz)>.001)actors.bunny.rotation.y=Math.atan2(dx,dz);
- // Bear begins searching after a short delay and chases the active room.
- if(elapsed>8){document.querySelector('#threat').style.display='block';const target=player.position.clone();const dir=target.sub(bear.position);const dist=dir.length();if(dist>.01){dir.normalize();const step=dir.multiplyScalar(1.55*dt);const bx=bear.position.x+step.x,bz=bear.position.z+step.z;if(!blocked(active,bx,bz)){bear.position.x=bx;bear.position.z=bz;}actors.bear.rotation.y=Math.atan2(step.x,step.z);}if(dist<1.35){playing=false;showScreen('caught')}}
- setActionHint();}
- renderer.render(scene,camera);}
+function addBox(parent, name, x, y, z, w, h, d, mat) {
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+  mesh.name = name; mesh.position.set(x, y, z); mesh.castShadow = true; mesh.receiveShadow = true;
+  parent.add(mesh); return mesh;
+}
+
+function makePlatform(id, width, depth, cx, cz) {
+  const platform = new THREE.Group(); platform.position.set(cx, 0, cz); root.add(platform);
+  addBox(platform, `${id}-foundation`, 0, -.42, 0, width + .9, .72, depth + .9, darkBase);
+  const edge = .24;
+  for (const [x,z,w,d] of [[0,-depth/2,width+1,edge],[0,depth/2,width+1,edge],[-width/2,0,edge,depth],[width/2,0,edge,depth]]) {
+    addBox(platform, `${id}-bronze-frame`, x, -.02, z, w, .35, d, bronze);
+  }
+  for (let i = -1; i <= 1; i++) {
+    const lamp = new THREE.PointLight(0xffa13d, 13, 6);
+    lamp.position.set(i * width * .31, .4, -depth/2 - .2); platform.add(lamp);
+  }
+}
+
+function normalizeRoom(gltfScene, id) {
+  const model = gltfScene;
+  model.updateMatrixWorld(true);
+  const bounds = new THREE.Box3().setFromObject(model);
+  const size = bounds.getSize(new THREE.Vector3());
+  const horizontal = Math.max(size.x, size.z, .001);
+  const scale = 13.2 / horizontal;
+  model.scale.setScalar(scale);
+  model.updateMatrixWorld(true);
+  const scaledBounds = new THREE.Box3().setFromObject(model);
+  const scaledSize = scaledBounds.getSize(new THREE.Vector3());
+  model.position.x -= (scaledBounds.min.x + scaledBounds.max.x) / 2;
+  model.position.z -= (scaledBounds.min.z + scaledBounds.max.z) / 2;
+  model.position.y -= scaledBounds.min.y;
+  model.updateMatrixWorld(true);
+  model.traverse((obj) => {
+    if (!obj.isMesh) return;
+    obj.castShadow = true; obj.receiveShadow = true;
+    if (obj.material) {
+      const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+      for (const m of mats) { m.side = THREE.DoubleSide; if ('roughness' in m && m.roughness < .18) m.roughness = .22; }
+    }
+  });
+  const { center } = roomInfo[id];
+  const group = new THREE.Group(); group.position.set(center[0], 0, center[1]);
+  // La sala se gira para que su abertura y su interior miren hacia la cámara.
+  if (id === 'living') group.rotation.y = Math.PI;
+  group.add(model); root.add(group);
+  roomGroups[id] = group;
+  roomSizes[id] = { width: scaledSize.x, depth: scaledSize.z, height: scaledSize.y };
+  makePlatform(id, Math.max(scaledSize.x, 10.8), Math.max(scaledSize.z, 8.8), center[0], center[1]);
+  // Conservative collision boxes from furniture meshes only; original model geometry is untouched.
+  model.updateMatrixWorld(true);
+  const furnitureWords = /(cama|bed|mesa|table|silla|chair|refriger|mueble|sofa|sill[oó]n|armario|tele|tv|caj[oó]n|gabinete|estante|c[oó]moda)/i;
+  model.traverse((obj) => {
+    if (!obj.isMesh || !furnitureWords.test(obj.name)) return;
+    const b = new THREE.Box3().setFromObject(obj);
+    const s = b.getSize(new THREE.Vector3());
+    if (s.x > .35 && s.z > .35 && s.x < 7 && s.z < 7 && s.y > .25) {
+      colliders[id].push({ minX: b.min.x, maxX: b.max.x, minZ: b.min.z, maxZ: b.max.z });
+    }
+  });
+}
+
+const actors = { cow: null, bunny: null, bear: null };
+const player = new THREE.Group(); scene.add(player);
+const buddy = new THREE.Group(); scene.add(buddy);
+const bear = new THREE.Group(); scene.add(bear);
+function normalizeActor(model, height) {
+  model.updateMatrixWorld(true);
+  let b = new THREE.Box3().setFromObject(model);
+  const s = b.getSize(new THREE.Vector3());
+  model.scale.setScalar(height / Math.max(s.y, .001));
+  model.updateMatrixWorld(true);
+  b = new THREE.Box3().setFromObject(model);
+  model.position.y -= b.min.y;
+  model.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; if (o.material) { const ms = Array.isArray(o.material) ? o.material : [o.material]; ms.forEach(m => m.side = THREE.DoubleSide); } } });
+  return model;
+}
+
+function makeKey(color) {
+  const group = new THREE.Group();
+  const gold = material(color, .28, .7);
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(.18, .055, 10, 24), gold); ring.position.x = -.18; group.add(ring);
+  const shaft = addBox(group, 'key-shaft', .16, 0, 0, .48, .09, .09, gold);
+  const tooth = addBox(group, 'key-tooth', .35, -.09, 0, .09, .18, .09, gold);
+  group.userData.float = true; return group;
+}
+const keys3D = { gold: makeKey('#efb33f'), blue: makeKey('#58a8e9'), green: makeKey('#6ab66a') };
+for (const k of Object.values(keys3D)) scene.add(k);
+
+let active = 'bed', started = false, paused = false, caught = false, finale = false;
+let elapsed = 0, toastTimer = null, doorAttempts = 0, exitDoor = null;
+const collected = { gold: false, blue: false, green: false };
+const keyPositions = {};
+const keyToRoom = { gold: 'bed', blue: 'kitchen', green: 'living' };
+function worldPoint(id, local) {
+  const group = roomGroups[id];
+  if (!group) { const c = roomInfo[id].center; return new THREE.Vector3(c[0] + local[0], local[1], c[1] + local[2]); }
+  return group.localToWorld(new THREE.Vector3(local[0], local[1], local[2]));
+}
+for (const [key, id] of Object.entries(keyToRoom)) keyPositions[key] = worldPoint(id, roomInfo[id].key);
+
+function roomBounds(id) {
+  const c = roomInfo[id].center, s = roomSizes[id] || { width: 13.2, depth: 10 };
+  return { minX: c[0] - Math.max(s.width, 10.8)/2 + .65, maxX: c[0] + Math.max(s.width, 10.8)/2 - .65, minZ: c[1] - Math.max(s.depth, 8.8)/2 + .65, maxZ: c[1] + Math.max(s.depth, 8.8)/2 - .65 };
+}
+function blocked(id, x, z) {
+  const b = roomBounds(id);
+  if (x < b.minX || x > b.maxX || z < b.minZ || z > b.maxZ) return true;
+  for (const o of colliders[id]) if (x > o.minX - .38 && x < o.maxX + .38 && z > o.minZ - .38 && z < o.maxZ + .38) return true;
+  return false;
+}
+function showToast(text) {
+  const el = $('#toast'); el.textContent = text; el.style.opacity = '1';
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => el.style.opacity = '0', 2400);
+}
+function updateKeyUI() {
+  for (const k of Object.keys(collected)) {
+    const el = $(`[data-key="${k}"]`); el.classList.toggle('done', collected[k]);
+    el.querySelector('small').textContent = collected[k] ? 'CONSEGUIDA' : 'PENDIENTE';
+  }
+}
+function updateObjective() {
+  let text = roomInfo[active].objective;
+  if (active === 'bed' && collected.gold) text = 'Llave dorada conseguida. Dirígete a la cocina.';
+  if (active === 'kitchen' && collected.blue) text = 'Llave azul conseguida. Continúa hacia la sala.';
+  if (active === 'living' && Object.values(collected).every(Boolean)) text = 'Acércate a la puerta y presiona E para probar las llaves.';
+  $('#objective').textContent = text;
+}
+function setRoom(id) {
+  active = id;
+  const c = roomInfo[id].center, s = roomInfo[id].spawn;
+  player.position.copy(worldPoint(id, [s[0], 0, s[2]]));
+  // En cocina el conejo aparece claramente junto a la vaca, sin quedar oculto tras la mesa.
+  const buddyOffset = id === 'kitchen' ? [1.15, 0, .25] : [-.9, 0, .7];
+  const buddyLocal = worldPoint(id, [s[0] + buddyOffset[0], 0, s[2] + buddyOffset[2]]);
+  buddy.position.set(buddyLocal.x, 0, buddyLocal.z);
+  if (actors.bear) { const bp = worldPoint(id, [4.7, 0, -3.3]); bear.position.set(bp.x, 0, bp.z); }
+  $('#room-name').textContent = roomInfo[id].title;
+  document.querySelectorAll('.floor-btn').forEach(b => b.classList.toggle('active', b.dataset.room === id));
+  updateObjective();
+}
+function switchRoom(id) {
+  if (id === active) return;
+  if (id === 'kitchen' && !collected.gold) return showToast('La entrada a la cocina está cerrada. Encuentra primero la llave dorada.');
+  if (id === 'living' && !collected.blue) return showToast('Necesitas la llave azul para entrar a la sala.');
+  setRoom(id); showToast(`Entraste a ${id === 'bed' ? 'la habitación' : id === 'kitchen' ? 'la cocina' : 'la sala'}.`);
+}
+function distance(a,b) { return Math.hypot(a.x-b.x, a.z-b.z); }
+function collectKey(key) {
+  if (collected[key]) return;
+  collected[key] = true; keys3D[key].visible = false; updateKeyUI(); updateObjective();
+  const messages = { gold: '¡Encontraste la llave dorada debajo de la cama!', blue: '¡Encontraste la llave azul flotando sobre la repisa junto a la ventana!', green: '¡Encontraste la llave verde dentro de la taza!' };
+  showToast(messages[key]);
+  if (key === 'blue') buddy.position.set(player.position.x + .5, 0, player.position.z + .5);
+}
+function interact() {
+  if (!started || paused || finale || caught) return;
+  const key = Object.keys(keyToRoom).find(k => keyToRoom[k] === active && !collected[k]);
+  if (key && distance(player.position, keyPositions[key]) < 2.8) { collectKey(key); return; }
+  if (active === 'living' && Object.values(collected).every(Boolean) && exitDoor && distance(player.position, getExitDoorCenter()) < 3.4) {
+    testDoorKey(); return;
+  }
+  showToast('Acércate al objeto con el que quieras interactuar y presiona E.');
+}
+function testDoorKey() {
+  const attempts = [
+    { key: 'gold', message: 'La llave dorada no abre. Prueba con otra.' },
+    { key: 'green', message: 'La llave verde tampoco funciona. Intenta con la última.' }
+  ];
+  if (doorAttempts < attempts.length) {
+    showToast(attempts[doorAttempts].message);
+    doorAttempts++;
+    return;
+  }
+  startFinale();
+}
+function startFinale() {
+  finale = true; $('#objective').textContent = '¡La llave azul funciona! La vaca y el conejo escapan.';
+  showToast('¡Clic! La llave azul abre la puerta.');
+  if (exitDoor) { exitDoor.userData.opening = true; }
+  setTimeout(() => {
+    if (exitDoor) exitDoor.rotation.y += Math.PI / 2;
+    showToast('¡La vaca y el conejo lograron escapar!');
+  }, 650);
+  setTimeout(() => { $('#ending').classList.remove('hidden'); started = false; }, 2400);
+}
+function resetGame() {
+  Object.keys(collected).forEach(k => { collected[k] = false; keys3D[k].visible = true; });
+  doorAttempts = 0; if (exitDoor) exitDoor.rotation.y = 0;
+  updateKeyUI(); elapsed = 0; finale = false; caught = false; paused = false; started = true;
+  setRoom('bed'); $('#threat').style.display = 'none';
+  $('#start').classList.add('hidden'); $('#pause').classList.add('hidden'); $('#caught').classList.add('hidden'); $('#ending').classList.add('hidden');
+  showToast('Encuentra las tres llaves y evita al oso.');
+}
+function pauseGame(value) { paused = value; $('#pause').classList.toggle('hidden', !value); }
+
+function findOriginalExitDoor() {
+  // La puerta forma parte del modelo Sala.glb original (Sala2.glb entregado).
+  // No se crea, sustituye ni recoloca ningún elemento del escenario.
+  const group = roomGroups.living;
+  let found = null;
+  group.traverse(obj => {
+    if (!found && obj.name && /Puerta principal/i.test(obj.name)) found = obj;
+  });
+  exitDoor = found;
+  if (!exitDoor) console.warn('No se encontró el objeto "Puerta principal" dentro de Sala.glb.');
+}
+function getExitDoorCenter() {
+  if (!exitDoor) return new THREE.Vector3(0, 0, 0);
+  exitDoor.updateWorldMatrix(true, false);
+  const bounds = new THREE.Box3().setFromObject(exitDoor);
+  const center = bounds.getCenter(new THREE.Vector3());
+  return new THREE.Vector3(center.x, 0, center.z);
+}
+
+async function loadAll() {
+  const roomEntries = Object.entries(roomInfo);
+  for (const [id, info] of roomEntries) {
+    const gltf = await loader.loadAsync(`models/${info.file}`);
+    normalizeRoom(gltf.scene, id);
+  }
+  // Recalcular posiciones cuando los tres grupos ya existen, incluyendo la rotación de la sala.
+  for (const [key, id] of Object.entries(keyToRoom)) keyPositions[key] = worldPoint(id, roomInfo[id].key);
+  const [cow, bunny, bearModel] = await Promise.all([
+    loader.loadAsync('models/Vaca_Protagonista.glb'),
+    loader.loadAsync('models/Conejo_Complice.glb'),
+    loader.loadAsync('models/Oso.glb')
+  ]);
+  actors.cow = normalizeActor(cow.scene, 1.45);
+  actors.bunny = normalizeActor(bunny.scene, 1.48);
+  actors.bear = normalizeActor(bearModel.scene, 1.65);
+  player.add(actors.cow); buddy.add(actors.bunny); bear.add(actors.bear);
+  // Put the key props in the corresponding rooms, without altering the supplied room models.
+  for (const [k, p] of Object.entries(keyPositions)) { keys3D[k].position.copy(p); keys3D[k].position.y += (k === 'blue' ? 0 : .45); }
+  keys3D.blue.scale.setScalar(1.25);
+  keys3D.blue.rotation.z = -.18;
+  findOriginalExitDoor();
+  setRoom('bed');
+  $('#loading').classList.add('hidden'); $('#play').disabled = false; $('#play').textContent = 'COMENZAR';
+}
+loadAll().catch(err => { console.error(err); $('#loading').innerHTML = '<b>No se pudieron cargar los modelos.</b><small>Abre el proyecto con Live Server y revisa la carpeta models.</small>'; });
+
+const pressed = {};
+addEventListener('keydown', e => {
+  const k = e.key.toLowerCase(); pressed[k] = true;
+  if (['arrowup','arrowdown','arrowleft','arrowright',' '].includes(k)) e.preventDefault();
+  if (k === 'escape' && started) pauseGame(!paused);
+  if (k === 'e') interact();
+  if (k === '1') switchRoom('bed'); if (k === '2') switchRoom('kitchen'); if (k === '3') switchRoom('living');
+});
+addEventListener('keyup', e => { pressed[e.key.toLowerCase()] = false; });
+document.querySelectorAll('.floor-btn').forEach(b => b.addEventListener('click', () => switchRoom(b.dataset.room)));
+$('#play').addEventListener('click', resetGame);
+$('#show-instructions').addEventListener('click', () => { $('#start').classList.add('hidden'); $('#instructions').classList.remove('hidden'); });
+$('#instructions-back').addEventListener('click', () => { $('#instructions').classList.add('hidden'); $('#start').classList.remove('hidden'); });
+$('#resume').addEventListener('click', () => pauseGame(false));
+$('#restart').addEventListener('click', resetGame);
+$('#retry').addEventListener('click', () => { caught = false; setRoom(active); $('#caught').classList.add('hidden'); started = true; });
+$('#again').addEventListener('click', resetGame);
+
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = Math.min(clock.getDelta(), .04);
+  if (started && !paused && !finale && actors.cow) {
+    elapsed += dt;
+    let dx = 0, dz = 0;
+    if (pressed.arrowleft || pressed.a) dx -= 1;
+    if (pressed.arrowright || pressed.d) dx += 1;
+    if (pressed.arrowup || pressed.w) dz -= 1;
+    if (pressed.arrowdown || pressed.s) dz += 1;
+    const len = Math.hypot(dx,dz) || 1, speed = 4.15;
+    dx = dx / len * speed * dt; dz = dz / len * speed * dt;
+    const nx = player.position.x + dx, nz = player.position.z + dz;
+    if (!blocked(active, nx, player.position.z)) player.position.x = nx;
+    if (!blocked(active, player.position.x, nz)) player.position.z = nz;
+    if (dx || dz) actors.cow.rotation.y = Math.atan2(dx,dz);
+    const follow = new THREE.Vector3(player.position.x - .85, 0, player.position.z + .8);
+    const bx = THREE.MathUtils.damp(buddy.position.x, follow.x, 3, dt);
+    const bz = THREE.MathUtils.damp(buddy.position.z, follow.z, 3, dt);
+    if (!blocked(active, bx, bz)) { buddy.position.x = bx; buddy.position.z = bz; }
+    if (elapsed > 9) {
+      $('#threat').style.display = 'block';
+      const direction = new THREE.Vector3(player.position.x - bear.position.x, 0, player.position.z - bear.position.z);
+      const d = direction.length();
+      if (d > .02) {
+        direction.normalize(); const step = direction.multiplyScalar(1.18 * dt);
+        const tx = bear.position.x + step.x, tz = bear.position.z + step.z;
+        if (!blocked(active, tx, tz)) { bear.position.x = tx; bear.position.z = tz; }
+        actors.bear.rotation.y = Math.atan2(step.x, step.z);
+      }
+      if (d < 1.2) { caught = true; started = false; $('#caught').classList.remove('hidden'); }
+    }
+    for (const [key, obj] of Object.entries(keys3D)) if (obj.visible) { obj.rotation.y += dt * 1.5; if (key === 'blue') obj.position.y = keyPositions.blue.y + Math.sin(clock.elapsedTime * 2.2) * .13; }
+    updateObjective();
+  }
+  renderer.render(scene, camera);
+}
 animate();
-addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
+addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
