@@ -182,7 +182,11 @@ function setRoom(id) {
   const buddyOffset = id === 'kitchen' ? [1.15, 0, .25] : [-.9, 0, .7];
   const buddyLocal = worldPoint(id, [s[0] + buddyOffset[0], 0, s[2] + buddyOffset[2]]);
   buddy.position.set(buddyLocal.x, 0, buddyLocal.z);
-  if (actors.bear) { const bp = worldPoint(id, [4.7, 0, -3.3]); bear.position.set(bp.x, 0, bp.z); }
+  if (actors.bear) {
+    // El oso aparece cerca de la vaca en cada escenario para que la persecución sea visible.
+    const bp = worldPoint(id, [s[0] + 3.8, 0, s[2] - 2.2]);
+    bear.position.set(bp.x, 0, bp.z);
+  }
   $('#room-name').textContent = roomInfo[id].title;
   document.querySelectorAll('.floor-btn').forEach(b => b.classList.toggle('active', b.dataset.room === id));
   updateObjective();
@@ -356,15 +360,18 @@ function animate() {
     const bx = THREE.MathUtils.damp(buddy.position.x, follow.x, 3, dt);
     const bz = THREE.MathUtils.damp(buddy.position.z, follow.z, 3, dt);
     if (!blocked(active, bx, bz)) { buddy.position.x = bx; buddy.position.z = bz; }
-    if (elapsed > 3.5) {
+    if (elapsed >= 3.0) {
       $('#threat').style.display = 'block';
       const atExit = active === 'living' && Object.values(collected).every(Boolean) && doorUsePoint && distance(player.position, doorUsePoint) < 6.0;
       const direction = new THREE.Vector3(player.position.x - bear.position.x, 0, player.position.z - bear.position.z);
       const d = direction.length();
       if (d > .02 && !atExit) {
-        direction.normalize(); const step = direction.multiplyScalar(1.65 * dt);
+        direction.normalize(); const step = direction.multiplyScalar(3.0 * dt);
         const tx = bear.position.x + step.x, tz = bear.position.z + step.z;
+        // Intenta avanzar en diagonal y, si un mueble bloquea el paso, rodearlo por un eje.
         if (!blocked(active, tx, tz)) { bear.position.x = tx; bear.position.z = tz; }
+        else if (!blocked(active, tx, bear.position.z)) { bear.position.x = tx; }
+        else if (!blocked(active, bear.position.x, tz)) { bear.position.z = tz; }
         actors.bear.rotation.y = Math.atan2(step.x, step.z);
       }
       if (d < 0.95 && !atExit) { caught = true; started = false; $('#caught').classList.remove('hidden'); }
