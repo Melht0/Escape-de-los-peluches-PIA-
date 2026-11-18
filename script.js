@@ -175,6 +175,7 @@ function updateObjective() {
 }
 function setRoom(id) {
   active = id;
+  elapsed = 0; // El oso espera nuevamente al entrar a cada piso.
   const c = roomInfo[id].center, s = roomInfo[id].spawn;
   player.position.copy(worldPoint(id, [s[0], 0, s[2]]));
   // En cocina el conejo aparece claramente junto a la vaca, sin quedar oculto tras la mesa.
@@ -355,7 +356,7 @@ function animate() {
     const bx = THREE.MathUtils.damp(buddy.position.x, follow.x, 3, dt);
     const bz = THREE.MathUtils.damp(buddy.position.z, follow.z, 3, dt);
     if (!blocked(active, bx, bz)) { buddy.position.x = bx; buddy.position.z = bz; }
-    if (elapsed > 7) {
+    if (elapsed > 3.5) {
       $('#threat').style.display = 'block';
       const atExit = active === 'living' && Object.values(collected).every(Boolean) && doorUsePoint && distance(player.position, doorUsePoint) < 6.0;
       const direction = new THREE.Vector3(player.position.x - bear.position.x, 0, player.position.z - bear.position.z);
