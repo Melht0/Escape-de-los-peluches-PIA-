@@ -202,14 +202,18 @@ function collectKey(key) {
 }
 function interact() {
   if (!started || paused || finale || caught) return;
-  const key = Object.keys(keyToRoom).find(k => keyToRoom[k] === active && !collected[k]);
-  if (key && distance(player.position, keyPositions[key]) < 2.8) { collectKey(key); return; }
-  if (active === 'living' && Object.values(collected).every(Boolean)) {
-    if (doorUsePoint && distance(player.position, doorUsePoint) < 4.6) { testDoorKey(); return; }
-    showToast('Acércate al frente de la puerta de salida y presiona E para probar una llave.');
+  // Distancia horizontal: la altura de una llave flotante no afecta la interacción.
+  const roomKey = Object.keys(keyToRoom).find(k => keyToRoom[k] === active && !collected[k]);
+  if (roomKey && keyPositions[roomKey] && distance(player.position, keyPositions[roomKey]) <= 6.0) {
+    collectKey(roomKey);
     return;
   }
-  showToast('Acércate al objeto con el que quieras interactuar y presiona E.');
+  if (active === 'living' && Object.values(collected).every(Boolean)) {
+    if (doorUsePoint && distance(player.position, doorUsePoint) <= 7.0) { testDoorKey(); return; }
+    showToast('Acércate a la puerta de salida y presiona E para probar las llaves.');
+    return;
+  }
+  showToast(roomKey ? 'Explora el escenario y acércate a la llave para recogerla.' : 'No hay objetos pendientes en este escenario.');
 }
 function testDoorKey() {
   const attempts = [
@@ -292,9 +296,11 @@ const pressed = {};
 addEventListener('keydown', e => {
   const k = e.key.toLowerCase(); pressed[k] = true;
   if (['arrowup','arrowdown','arrowleft','arrowright',' '].includes(k)) e.preventDefault();
-  if (k === 'escape' && started) pauseGame(!paused);
-  if (k === 'e') interact();
-  if (k === '1') switchRoom('bed'); if (k === '2') switchRoom('kitchen'); if (k === '3') switchRoom('living');
+  if (k === 'escape' && started && !e.repeat) pauseGame(!paused);
+  if ((e.code === 'KeyE' || k === 'e') && !e.repeat) { e.preventDefault(); interact(); }
+  if (k === '1' && !e.repeat) switchRoom('bed');
+  if (k === '2' && !e.repeat) switchRoom('kitchen');
+  if (k === '3' && !e.repeat) switchRoom('living');
 });
 addEventListener('keyup', e => { pressed[e.key.toLowerCase()] = false; });
 document.querySelectorAll('.floor-btn').forEach(b => b.addEventListener('click', () => switchRoom(b.dataset.room)));
@@ -361,7 +367,13 @@ function animate() {
       }
       if (d < 1.2) { caught = true; started = false; $('#caught').classList.remove('hidden'); }
     }
-    for (const [key, obj] of Object.entries(keys3D)) if (obj.visible) { obj.rotation.y += dt * 1.5; if (key === 'blue') obj.position.y = keyPositions.blue.y + Math.sin(clock.elapsedTime * 2.2) * .13; }
+    for (const [key, obj] of Object.entries(keys3D)) {
+      if (!obj.visible) continue;
+      obj.rotation.y += dt * 1.5;
+      if (key === 'blue') obj.position.y = keyPositions.blue.y + Math.sin(clock.elapsedTime * 2.2) * .13;
+      // Recogida asistida al tocar la llave; también se puede recoger manualmente con E.
+      if (keyToRoom[key] === active && !collected[key] && distance(player.position, keyPositions[key]) < 1.05) collectKey(key);
+    }
     updateObjective();
   }
   renderer.render(scene, camera);
