@@ -204,16 +204,16 @@ function interact() {
   if (!started || paused || finale || caught) return;
   // Distancia horizontal: la altura de una llave flotante no afecta la interacción.
   const roomKey = Object.keys(keyToRoom).find(k => keyToRoom[k] === active && !collected[k]);
-  if (roomKey && keyPositions[roomKey] && distance(player.position, keyPositions[roomKey]) <= 2.35) {
+  if (roomKey && keyPositions[roomKey] && distance(player.position, keyPositions[roomKey]) <= 6.0) {
     collectKey(roomKey);
     return;
   }
   if (active === 'living' && Object.values(collected).every(Boolean)) {
-    if (doorUsePoint && distance(player.position, doorUsePoint) <= 5.2) { testDoorKey(); return; }
-    showToast('Ponte frente a la puerta de la sala y presiona E para probar una llave.');
+    if (doorUsePoint && distance(player.position, doorUsePoint) <= 7.0) { testDoorKey(); return; }
+    showToast('Acércate a la puerta de salida y presiona E para probar las llaves.');
     return;
   }
-  showToast(roomKey ? 'Acércate un poco más a la llave y presiona E para recogerla.' : 'No hay objetos pendientes en este escenario.');
+  showToast(roomKey ? 'Explora el escenario y acércate a la llave para recogerla.' : 'No hay objetos pendientes en este escenario.');
 }
 function testDoorKey() {
   const attempts = [
@@ -261,7 +261,7 @@ function findOriginalExitDoor() {
   const roomCenter = new THREE.Vector3(group.position.x, 0, group.position.z);
   const inward = new THREE.Vector3(roomCenter.x - center.x, 0, roomCenter.z - center.z).normalize();
   const halfDepth = Math.min(Math.max(size.x, size.z) * .5, 1.1);
-  doorUsePoint = new THREE.Vector3(center.x, 0, center.z).addScaledVector(inward, halfDepth + 0.9);
+  doorUsePoint = new THREE.Vector3(center.x, 0, center.z).addScaledVector(inward, halfDepth + 1.05);
 }
 function getExitDoorCenter() { return doorUsePoint ? doorUsePoint.clone() : new THREE.Vector3(0, 0, 0); }
 
@@ -355,23 +355,24 @@ function animate() {
     const bx = THREE.MathUtils.damp(buddy.position.x, follow.x, 3, dt);
     const bz = THREE.MathUtils.damp(buddy.position.z, follow.z, 3, dt);
     if (!blocked(active, bx, bz)) { buddy.position.x = bx; buddy.position.z = bz; }
-    if (elapsed > 24) {
+    if (elapsed > 9) {
       $('#threat').style.display = 'block';
-      const atExit = active === 'living' && Object.values(collected).every(Boolean) && doorUsePoint && distance(player.position, doorUsePoint) < 6.0;
       const direction = new THREE.Vector3(player.position.x - bear.position.x, 0, player.position.z - bear.position.z);
       const d = direction.length();
-      if (d > .02 && !atExit) {
-        direction.normalize(); const step = direction.multiplyScalar(0.68 * dt);
+      if (d > .02) {
+        direction.normalize(); const step = direction.multiplyScalar(1.18 * dt);
         const tx = bear.position.x + step.x, tz = bear.position.z + step.z;
         if (!blocked(active, tx, tz)) { bear.position.x = tx; bear.position.z = tz; }
         actors.bear.rotation.y = Math.atan2(step.x, step.z);
       }
-      if (d < 0.95 && !atExit) { caught = true; started = false; $('#caught').classList.remove('hidden'); }
+      if (d < 1.2) { caught = true; started = false; $('#caught').classList.remove('hidden'); }
     }
     for (const [key, obj] of Object.entries(keys3D)) {
       if (!obj.visible) continue;
       obj.rotation.y += dt * 1.5;
       if (key === 'blue') obj.position.y = keyPositions.blue.y + Math.sin(clock.elapsedTime * 2.2) * .13;
+      // Recogida asistida al tocar la llave; también se puede recoger manualmente con E.
+      if (keyToRoom[key] === active && !collected[key] && distance(player.position, keyPositions[key]) < 1.05) collectKey(key);
     }
     updateObjective();
   }
