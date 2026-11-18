@@ -33,20 +33,24 @@ box(bedRoom,'bed-base',-3,.72,1.1,5.6,1.05,3.3,mats.wood2);box(bedRoom,'mattress
 box(kitchen,'counter-back',0,1.15,-3.85,8.6,1.8,.8,mats.wood2);box(kitchen,'counter-top',0,2.1,-3.8,8.9,.18,1.05,mat('#b58a5e'));for(let x=-3;x<=3;x+=1.5){box(kitchen,'cabinet-door',x,1.05,-3.35,1.35,1.3,.12,mat('#c9b69e'));cylinder(kitchen,'cabinet-knob',x+.4,1.1,-3.25,.06,.06,.08,mats.gold)}box(kitchen,'fridge',5,1.7,-2.1,1.8,3.2,1.7,mat('#aeb9ba',.35,.18));box(kitchen,'fridge-handle',4.3,1.8,-1.2,.08,1.2,.08,mat('#667174',.3,.5));box(kitchen,'table-top',0,1.45,.7,4.7,.25,2.1,mats.wood2);for(const x of [-1.9,1.9])for(const z of [-.05,1.45])box(kitchen,'table-leg',x,.7,z,.18,1.35,.18,mats.brown);for(const x of [-3.2,3.2]){box(kitchen,'chair-seat',x,1,.8,1.5,.25,1.4,mats.fabric);box(kitchen,'chair-back',x,1.8,1.45,1.5,1.5,.2,mat('#9da5a5'));for(const dx of [-.55,.55])for(const dz of [.3,1.3])box(kitchen,'chair-leg',x+dx,.48,dz,.12,1,.12,mat('#a4afb0'));}cylinder(kitchen,'plate',-.7,1.61,.65,.42,.42,.05,mats.white);cylinder(kitchen,'plate',.8,1.61,.65,.42,.42,.05,mats.white);
 // living room: wallpaper, cabinet, television, door, green chair and side table
 box(living,'wardrobe',-6,1.55,-4.2,3,3.1,1.6,mats.brown);box(living,'wardrobe-blue-door',-6,1.7,-3.35,1.25,2.1,.1,mats.blue);box(living,'wardrobe-blue-door',-4.7,1.7,-3.35,1.25,2.1,.1,mats.blue);box(living,'tv-body',-4.3,1.1,1.2,3.1,2.2,1.1,mat('#171c1c'));box(living,'tv-screen',-4.3,1.1,.62,2.7,1.75,.08,mat('#0d2226',.18,.25));for(const x of [-5,-3.6]){const ant=new THREE.Mesh(new THREE.CylinderGeometry(.025,.025,1.6,8),mat('#a8b0a7'));ant.position.set(x,2.65,.95);ant.rotation.z=.35;living.add(ant)}
-// Exit door: placed on the front-left wall of the living room, matching the requested position.
-// Replace that wall segment with two short wall pieces so the doorway is genuinely open.
-const oldFront= living.children.find(o=>o.name==='front-wall-left');
-if(oldFront) living.remove(oldFront);
-box(living,'front-wall-left-a',-8.45,1.1,5.5,2.1,2.2,.32,mat('#302017'));
-box(living,'front-wall-left-b',-3.05,1.1,5.5,2.1,2.2,.32,mat('#302017'));
-const exitDoorPivot=new THREE.Group(); exitDoorPivot.position.set(-6.85,0,5.34); living.add(exitDoorPivot);
-box(exitDoorPivot,'exit-door',1.15,1.85,0,2.3,3.7,.2,mat('#634632'));
-box(exitDoorPivot,'exit-door-panel',1.15,1.85,.13,1.55,2.75,.08,mat('#77563d'));
-box(exitDoorPivot,'exit-door-handle',2.05,1.8,.24,.09,.28,.08,mats.gold);
-box(living,'exit-door-frame-left',-7.1,2,5.48,.22,4,.35,mat('#80604a'));
-box(living,'exit-door-frame-right',-4.3,2,5.48,.22,4,.35,mat('#80604a'));
-box(living,'exit-door-frame-top',-5.7,3.95,5.48,3,.22,.35,mat('#80604a'));
-box(living,'exit-threshold',-5.7,.14,5.48,2.8,.16,.55,mats.gold);
+// Exit door: clearly visible on the BACK wall of the living room, facing the camera.
+// Split the back wall around a real doorway so the door cannot be hidden behind it.
+const oldBack=living.children.find(o=>o.name==='back-wall');
+if(oldBack) living.remove(oldBack);
+box(living,'back-wall-left',-8.35,2.9,-5.5,2.3,5.8,.32,mat('#302017'));
+box(living,'back-wall-right',2.15,2.9,-5.5,14.7,5.8,.32,mat('#302017'));
+const exitDoorPivot=new THREE.Group();
+exitDoorPivot.position.set(-7.2,0,-5.27); // hinge at the left side of the opening
+living.add(exitDoorPivot);
+box(exitDoorPivot,'exit-door',1.5,1.85,0,3,3.7,.24,mat('#6f3d25'));
+box(exitDoorPivot,'exit-door-inset',1.5,1.9,.15,2.25,2.85,.09,mat('#8c5635'));
+box(exitDoorPivot,'exit-door-upper-panel',1.5,2.65,.22,1.75,1.05,.07,mat('#70452f'));
+box(exitDoorPivot,'exit-door-lower-panel',1.5,1.15,.22,1.75,1.05,.07,mat('#70452f'));
+box(exitDoorPivot,'exit-door-handle',2.65,1.85,.28,.1,.32,.1,mats.gold);
+box(living,'exit-door-frame-left',-7.28,2,-5.27,.24,4,.42,mat('#d18a3e'));
+box(living,'exit-door-frame-right',-4.12,2,-5.27,.24,4,.42,mat('#d18a3e'));
+box(living,'exit-door-frame-top',-5.7,4,-5.27,3.4,.24,.42,mat('#d18a3e'));
+box(living,'exit-door-threshold',-5.7,.13,-4.95,3.1,.18,.7,mats.gold);
 // distinctive green angular chair silhouette
 box(living,'chair-seat',3,1.2,.7,2.5,.45,2,mats.green);box(living,'chair-back',3,2.3,-.1,2.4,2.2,.45,mats.green).rotation.x=-.16;box(living,'chair-arm',1.85,1.7,.8,.4,1.4,2,mats.green);box(living,'chair-arm',4.15,1.7,.8,.4,1.4,2,mats.green);cylinder(living,'side-table-pedestal',6.2,.8,1.6,.12,.12,1.5,mats.brown);cylinder(living,'side-table-top',6.2,1.6,1.6,.9,.9,.16,mat('#c7b6a4'));cylinder(living,'cup',6.2,1.82,1.6,.22,.28,.34,mats.white);
 // door openings are indicated with bright thresholds
@@ -76,7 +80,7 @@ function interact(){if(!playing||paused||cutscene)return;const p=player.position
  if(active==='bed'&&!keys.gold&&getDistance(p,new THREE.Vector3(-3,0,1.1))<4.1){keys.gold=true;updateKeys();showToast('¡Encontraste la llave dorada debajo de la cama!');return}
  if(active==='kitchen'&&!keys.blue&&getDistance(p,new THREE.Vector3(5,0,-2.1))<4.2){keys.blue=true;updateKeys();showToast('El conejo movió la silla. ¡Conseguiste la llave azul del refrigerador!');buddy.position.set(4,0,-.2);return}
  if(active==='living'&&!keys.green&&getDistance(p,new THREE.Vector3(6.2,0,1.6))<3.4){keys.green=true;updateKeys();showToast('¡La llave verde estaba dentro de la taza!');return}
- if(active==='living'&&getDistance(p,new THREE.Vector3(-5.7,0,10.8))<2.9){
+ if(active==='living'&&getDistance(p,new THREE.Vector3(-5.7,0,2.7))<2.9){
    if(!(keys.gold&&keys.blue&&keys.green)){showToast('Necesitas reunir las tres llaves antes de probar la cerradura.');return}
    const attempts=[['gold','La llave dorada no entra en la cerradura.'],['green','La llave verde tampoco funciona.'],['blue','¡La llave azul gira! La puerta se está abriendo.']];
    const [which,message]=attempts[Math.min(doorAttempt,2)];showToast(message);doorAttempt++;
@@ -84,7 +88,7 @@ function interact(){if(!playing||paused||cutscene)return;const p=player.position
  }
  if(active==='bed'&&keys.gold){changeRoom('kitchen');return}if(active==='kitchen'&&keys.blue){changeRoom('living');return}showToast('Acércate al objeto y presiona E para interactuar.');}
 function startEnding(){cutscene=true;showToast('¡La llave azul gira! La puerta se abre.');setTimeout(()=>{exitDoorPivot.rotation.y=-Math.PI/1.8;},450);setTimeout(()=>{showScreen('ending');playing=false;},3000)}
-function setActionHint(){let t=roomMeta[active].objective;if(active==='bed'&&keys.gold)t='Llave dorada conseguida. Ve a la cocina.';if(active==='kitchen'&&keys.blue)t='Llave azul conseguida. Continúa hacia la sala.';if(active==='living'&&keys.gold&&keys.blue&&keys.green)t='Prueba las llaves en la puerta central.';document.querySelector('#objective').textContent=t}
+function setActionHint(){let t=roomMeta[active].objective;if(active==='bed'&&keys.gold)t='Llave dorada conseguida. Ve a la cocina.';if(active==='kitchen'&&keys.blue)t='Llave azul conseguida. Continúa hacia la sala.';if(active==='living'&&keys.gold&&keys.blue&&keys.green)t='Acércate a la puerta del fondo de la sala y prueba las llaves.';document.querySelector('#objective').textContent=t}
 let cowReady=false;
 Promise.all([loadActor('Vaca_Protagonista.glb',2.05),loadActor('Conejo_Complice.glb',1.65),loadActor('Oso.glb',2.35)]).then(([c,b,o])=>{actors.cow=c;actors.bunny=b;actors.bear=o;player.add(c);buddy.add(b);bear.add(o);setRoom('bed');cowReady=true;document.querySelector('#play').disabled=false;document.querySelector('#play').textContent='COMENZAR';}).catch(err=>{console.error(err);document.querySelector('#loading')?.remove();showToast('No se pudieron cargar los modelos GLB. Revisa la carpeta models.');});
 // movement, soft obstacle blocking around furniture and room walls
